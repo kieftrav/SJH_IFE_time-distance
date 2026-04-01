@@ -4,4 +4,4 @@ zooniverse_config:
     subject_set_id: 135159
 project_urls:
     zooniverse_subjects: "https://www.zooniverse.org/api/subjects?subject_set_id={subject_set_id}&page={page}" 
-    context_media: 'C:\\Users\\mussesm1.SDSCI\\data\\AIA\\SJH_movies\\SJH_movies_solar_jets\\'
+    context_media: ""
