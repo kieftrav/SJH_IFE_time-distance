@@ -1,0 +1,93 @@
+documentation_media:
+    url: "Documentation\\"
+    media_files:
+        example_01:
+            filename: "Example_01.PNG"
+            name: 'img_example_01'
+            caption: "Example of line drawing"
+        example_02:
+            filename: "Example_02.PNG"
+            name: 'img_example_02'
+            caption: "cLeft: good annotation of the leading flows of the ejection. Right: too many annotations of the flows."
+        img_td_01:
+            filename: "time-distance-explained-01.PNG"
+            name: 'img_td_01'
+            width: 250
+            caption: "First frame in the video for this jet."
+        img_td_02:
+            filename: "time-distance-explained-02.PNG"
+            name: 'img_td_02'
+            width: 100
+            caption: "First column of the time-distance plot, obtained from the first frame of the video."
+        img_td_03:
+            filename: "time-distance-explained-03.PNG"
+            name: 'img_td_03'
+            width: 300
+            caption: "Same operation, for a later frame."
+        img_td_04:
+            filename: "time-distance-explained-04.PNG"
+            name: 'img_td_04'
+            width: 150
+            caption: "Individual columns, representing different time frames, together to form a time distance plot."
+        img_td_05:
+            filename: "time-distance-explained-05.PNG"
+            name: 'img_td_05'
+            caption: "Finalized time-distance plot."
+sidebar_text: 
+    control_text: |
+        The display parameters can be adjusted here for a better visualization of the plot.
+
+        By selecting 'Running difference', one displays the intensity difference between two time frames, rather than displaying the total intensity of each time frame.
+
+        Log and linear scales refer to the distribution of intensity (but running difference arrays are displayed only in linear scale).
+
+        Levels can be adjusted to saturate the image.
+    no_ejection_info_text:
+        text1: |
+            You tried changing the levels, you tried switching to running difference, but you did not see any clear ejection in the time-distance plot.
+        info1: |
+            Please have a look on the right, under 'More info about this jet'. Play the movie in which the jet is developing, and the jet box is visible.
+        text2: |
+            Did you see the jet, or this is a case of mis-label with no jet present?
+
+            Do you see the jet, but it is too faint to really show in the time-distance plot?
+
+            Do you see the jet, but it is not at all aligned with the box, which can explain why we do not see any ejection in the time-distance plot?
+        info2: |
+            Please assess the situation before choosing an option below.
+main_text:
+    about_this_task:
+        intro_text: |
+            Lines can be drawn directly on the data below: click right and maintain to draw. Release to end the line. Several lines can be drawn.
+        example_text1: |
+            We want you to draw line on the edge of the flows. 
+            Different lines may be necessary to capture different features, and the curvature of the flow. It might also be easier to see the flows in running-difference (see left panel to switch).   
+        example_text2: |
+            We want to capture the leading edge of the ejection. You may need a few lines to capture its curvature. We do not want to draw each individual flow.
+    why_are_we_doing_this:
+        text1: |
+            The time-distance plots are one way to visualize the jet ejection over time. By drawing lines along the ejection, we get information to calculate the velocity of the ejection, which is an important paramter in understanding the physical process causing the jets.
+
+            These plots have been computed automatically from the Solar Jet Hunter catalogue, using the box information derived from volunteers annotations. Some of these boxes might not be optimum for time-distance analysis, and some jets might be too faint to show in the time-distance plot.
+
+            Additionally, some jets are very complex with multiple flows.
+
+            for all of these reasons, we still need volunteers to look at these one by one, and to draw the lines on the time-distance plot: the complexity of the data makes automated analysis very difficult.
+
+            Thank you for helping us out!
+right_col_text:
+    how_do_we_produce_td:
+        text1: |
+            To produce the time-distance plot, we use the jet box drawn in the video.
+
+            We start on the first frame of the video.
+        text2: |
+            We consider only the data in the box, and squash it in the direction of the width of the box (We sum all pixels in one line). 
+            By doing so we obtained one column representing the height of the box. This will be the first column in our time-distance plot.
+        text3: |
+            We repeat this operation for all the video frames, one by one.
+        text4: |
+            By placing all the columns besides each other, we are constructing the time-distance plot.
+        text5: |
+            By the end, we have a plot where the x-axis represent passing time, and the y-axis represent the height of the box. 
+            Flows going up will be seen as going up in the plot, over time. We can sometimes also see flows going down in some jets.
