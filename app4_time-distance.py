@@ -4,7 +4,7 @@ import pandas as pd  # type: ignore
 from streamlit_drawable_canvas import st_canvas  # type: ignore
 from PIL import Image  # type: ignore
 import datetime
-import sunpy.visualization.colormaps as cm  # type: ignore
+# import sunpy.visualization.colormaps as cm  # type: ignore
 import matplotlib.pyplot as plt  # type: ignore
 from urllib.request import urlopen, Request
 import json
@@ -16,13 +16,13 @@ from pathlib import Path
 # -------------------- CONFIGURATION ----------------------
 # =========================================================
 
-with open('Config\\config_project.yaml', 'r') as file:
+with Path('Config/config_project.yaml').open('r') as file:
     config = yaml.safe_load(file)
 
-with open('Config\\config_documentation.yaml', 'r') as file:
+with Path('Config/config_documentation.yaml').open('r') as file:
     documentation = yaml.safe_load(file)
 
-cmap_aia = plt.get_cmap("sdoaia304")  # type: ignore
+cmap_aia = plt.get_cmap("Greys")  # type: ignore
 cmap_grey = plt.get_cmap("Greys")  # type: ignore
 st.set_page_config(layout="wide")
 
@@ -211,7 +211,7 @@ time, distance, time_dist, run_diff_td = get_td_data_from_metadata(metadata)
 # read jet id to access local context media (not part of the subject)
 current_jet_id = metadata['jet_id']
 jet_year = current_jet_id[4:8]
-context_path = Path(config['project_urls']['context_media']+jet_year+'\\'+current_jet_id+'_304\\'+current_jet_id+'_304.mp4')
+context_path = Path(config['project_urls']['context_media']) / jet_year / f"{current_jet_id}_304" / f"{current_jet_id}_304.mp4"
 
 # =========================================================
 # -------------------- UI CONTROLS ------------------------
@@ -221,7 +221,7 @@ with st.sidebar:
     st.title('Image display controls')
     with st.expander("ℹ️ About the controls"):
         st.write(documentation['sidebar_text']['control_text'])
-    
+
     left_side, right_side = st.columns([1,1])
 
     with left_side:
@@ -305,7 +305,7 @@ with main:
 with right:
     with st.container(border=True):
         st.write('#### More info about this jet')
-        st.video(str(context_path))
+        # st.video(str(context_path))
         st.write('Play the video to see the jet developing in the associated box.')
 
         with st.expander("ℹ️ How do we produce the time-distance plot?"):
@@ -344,7 +344,7 @@ with main:
     st.write(" ")
     with st.expander("ℹ️ Why are we doing this?"):
         st.write(documentation["main_text"]["why_are_we_doing_this"]["text1"])
-        
+
 
 # =========================================================
 # -------------------- COORDINATE MAPPING ------------------
@@ -366,7 +366,7 @@ def pixel_to_data(px, py, x_seconds, y, width, height):
 
 lines = []
 
-# NEED TO ALSO SAVE THE NUMERIC VALUE OF X FOR AGGREGATION PURPOSE... 
+# NEED TO ALSO SAVE THE NUMERIC VALUE OF X FOR AGGREGATION PURPOSE...
 # WE ALSO NEED TO STORE THE IMAGE WIDTH AND HEIGHT, AND MAYBE THE LIMITS OF X_SECONDS,
 # TO EASY CONVERSION OF THE AGGREGATED VALUE LATER
 if canvas.json_data is not None:
