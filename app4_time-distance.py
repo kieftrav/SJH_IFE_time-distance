@@ -230,7 +230,8 @@ if "subject_ids" not in st.session_state:
     st.session_state["subject_ids"] = subject_id_list
 if "subject_index" not in st.session_state:
     st.session_state["subject_index"] = 0
-
+if "selected_submit_option" not in st.session_state:
+    st.session_state["selected_submit_option"] = None
 
 # =========================================================
 # -------------------- LOGIN (OAuth) ----------------------
@@ -500,11 +501,28 @@ with st.sidebar:
         st.write(documentation["sidebar_text"]["no_ejection_info_text"]["text2"])
         st.info(documentation["sidebar_text"]["no_ejection_info_text"]["info2"])
 
-    if st.button("No jet in context movie", use_container_width=True):
-        next_jet(subject_index, subject_ids)
-    if st.button("Jet too faint", use_container_width=True):
-        next_jet(subject_index, subject_ids)
-    if st.button("Jet not aligned with the box", use_container_width=True):
-        next_jet(subject_index, subject_ids)
-    if st.button("Something else", use_container_width=True):
+
+    options = [
+        "No jet in context movie",
+        "Jet too faint",
+        "Jet not aligned with the box",
+        "Something else"
+    ]
+    # 1. Single-choice selection (radio ensures only one)
+    selected = st.radio("Select one option:", options, index=None)  # ← no default selection
+    # Store selection
+    st.session_state["selected_option"] = selected
+    # ---- Conditions ----
+    no_option_selected = selected is None
+    lines_drawn = lines is not None and len(lines) > 0
+    # ---- Disable logic ----
+    disable_submit = no_option_selected or lines_drawn
+    # ---- Feedback (optional but very useful UX) ----
+    if lines_drawn:
+        st.warning("Submit disabled: you have drawn lines. Clear them to classify.")
+    # ---- Submit button ----
+    submit = st.button("Submit", disabled=disable_submit)
+    submit_and_talk = st.button("Submit & Talk", disabled=disable_submit)
+    if submit:
+        # need to add a way to save this no classification
         next_jet(subject_index, subject_ids)
