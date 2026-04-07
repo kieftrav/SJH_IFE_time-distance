@@ -6,31 +6,31 @@ documentation_media:
             name: 'img_example_01'
             caption: "Example of line drawing"
         example_02:
-            filename: "Example_02.PNG"
+            filename: "Example_02.png"
             name: 'img_example_02'
             caption: "cLeft: good annotation of the leading flows of the ejection. Right: too many annotations of the flows."
         img_td_01:
-            filename: "time-distance-explained-01.PNG"
+            filename: "time-distance-explained-01.png"
             name: 'img_td_01'
             width: 250
             caption: "First frame in the video for this jet."
         img_td_02:
-            filename: "time-distance-explained-02.PNG"
+            filename: "time-distance-explained-02.png"
             name: 'img_td_02'
             width: 100
             caption: "First column of the time-distance plot, obtained from the first frame of the video."
         img_td_03:
-            filename: "time-distance-explained-03.PNG"
+            filename: "time-distance-explained-03.png"
             name: 'img_td_03'
             width: 300
             caption: "Same operation, for a later frame."
         img_td_04:
-            filename: "time-distance-explained-04.PNG"
+            filename: "time-distance-explained-04.png"
             name: 'img_td_04'
             width: 150
             caption: "Individual columns, representing different time frames, together to form a time distance plot."
         img_td_05:
-            filename: "time-distance-explained-05.PNG"
+            filename: "time-distance-explained-05.png"
             name: 'img_td_05'
             caption: "Finalized time-distance plot."
 sidebar_text: 
