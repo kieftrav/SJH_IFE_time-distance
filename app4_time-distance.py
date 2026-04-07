@@ -286,6 +286,8 @@ if "code" in query_params and st.session_state["oauth_token"] is None:
         user = get_authenticated_user(token_data["access_token"])
         if user:
             st.session_state["username"] = user.get("login", user.get("display_name", "user"))
+        # Re-fetch subject with auth so Panoptes returns unclassified subjects
+        st.session_state.pop("current_subject", None)
         # Clear the code from the URL to prevent re-exchange on rerun
         st.query_params.clear()
         st.rerun()
