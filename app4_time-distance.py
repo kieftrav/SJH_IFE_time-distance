@@ -5,6 +5,8 @@ from PIL import Image  # type: ignore
 import datetime
 import matplotlib.pyplot as plt  # type: ignore
 from urllib.request import urlopen, Request
+import urllib.parse
+import requests as http_requests
 import json
 import re
 import yaml  # type: ignore
@@ -171,6 +173,43 @@ def next_jet(subject_index, subject_ids):
     st.rerun()
 
 
+# --------- ZOONIVERSE OAUTH FUNCTIONS --------------------
+
+PANOPTES_URL = "https://panoptes.zooniverse.org"
+PANOPTES_SCOPE = "user project classification subject public"
+
+def get_oauth_login_url():
+    oauth = st.secrets["zooniverse_oauth"]
+    params = urllib.parse.urlencode({
+        "response_type": "code",
+        "client_id": oauth["client_id"],
+        "redirect_uri": oauth["redirect_uri"],
+        "scope": PANOPTES_SCOPE,
+    })
+    return f"{PANOPTES_URL}/oauth/authorize?{params}"
+
+def exchange_code_for_token(code):
+    oauth = st.secrets["zooniverse_oauth"]
+    response = http_requests.post(f"{PANOPTES_URL}/oauth/token", data={
+        "grant_type": "authorization_code",
+        "client_id": oauth["client_id"],
+        "client_secret": oauth["client_secret"],
+        "redirect_uri": oauth["redirect_uri"],
+        "code": code,
+    })
+    response.raise_for_status()
+    return response.json()
+
+def get_authenticated_user(token):
+    response = http_requests.get(f"{PANOPTES_URL}/api/me", headers={
+        "Accept": "application/vnd.api+json; version=1",
+        "Authorization": f"Bearer {token}",
+    })
+    response.raise_for_status()
+    users = response.json().get("users", [])
+    return users[0] if users else None
+
+
 # =========================================================
 # -------------------- GET SUBJECTS -----------------------
 # =========================================================
@@ -185,24 +224,45 @@ subject_id_list = [s['id'] for s in subjects]
 
 if "username" not in st.session_state:
     st.session_state["username"] = "guest"
+if "oauth_token" not in st.session_state:
+    st.session_state["oauth_token"] = None
 if "subject_ids" not in st.session_state:
-    st.session_state["subject_ids"] = subject_id_list  # your list
+    st.session_state["subject_ids"] = subject_id_list
 if "subject_index" not in st.session_state:
     st.session_state["subject_index"] = 0
 
+
+# =========================================================
+# -------------------- LOGIN (OAuth) ----------------------
+# =========================================================
+
+# Handle OAuth callback: Panoptes redirects back with ?code=
+query_params = st.query_params
+if "code" in query_params and st.session_state["oauth_token"] is None:
+    code = query_params["code"]
+    try:
+        token_data = exchange_code_for_token(code)
+        st.session_state["oauth_token"] = token_data["access_token"]
+        user = get_authenticated_user(token_data["access_token"])
+        if user:
+            st.session_state["username"] = user.get("login", user.get("display_name", "user"))
+        # Clear the code from the URL to prevent re-exchange on rerun
+        st.query_params.clear()
+        st.rerun()
+    except Exception as e:
+        st.error(f"Login failed: {e}")
+        st.query_params.clear()
+
 st.write(f"Logged in as: {st.session_state['username']}")
 
-
-# =========================================================
-# -------------------- LOGIN ------------------------------
-# =========================================================
-
 if st.session_state["username"] == "guest":
-    if st.button("Zooniverse login"):
-        pass
+    login_url = get_oauth_login_url()
+    st.link_button("Log in with Zooniverse", login_url)
 else:
     if st.button("Log out"):
         st.session_state["username"] = "guest"
+        st.session_state["oauth_token"] = None
+        st.rerun()
 
 
 # =========================================================
