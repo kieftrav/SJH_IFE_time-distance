@@ -23,6 +23,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app4_time-distance.py .
 COPY Config/ ./Config/
 COPY Documentation/ ./Documentation/
+COPY .streamlit/ ./.streamlit/
 
 # Expose default Streamlit port
 EXPOSE 8501
