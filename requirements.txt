@@ -1,8 +1,7 @@
-numpy==1.26.2
-streamlit==1.32
-pandas==2.1.1
+numpy==2.4.4
+streamlit==1.56.0
+pandas==3.0.2
 streamlit-drawable-canvas==0.9.3
-Pillow==10.0.1
-matplotlib==3.8.1
-PyYAML==6.0.1
-sunpy==5.1.0
+Pillow==12.2.0
+matplotlib==3.10.8
+PyYAML==6.0.3

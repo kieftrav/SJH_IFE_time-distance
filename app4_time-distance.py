@@ -1,16 +1,30 @@
 import numpy as np  # type: ignore
 import streamlit as st  # type: ignore
 import pandas as pd  # type: ignore
-from streamlit_drawable_canvas import st_canvas  # type: ignore
 from PIL import Image  # type: ignore
 import datetime
-# import sunpy.visualization.colormaps as cm  # type: ignore
 import matplotlib.pyplot as plt  # type: ignore
 from urllib.request import urlopen, Request
 import json
 import re
 import yaml  # type: ignore
 from pathlib import Path
+# Patch streamlit-drawable-canvas for Streamlit 1.56+ compatibility
+# The package calls st.elements.image.image_to_url(image, width, clamp, channels, format, id)
+# but this function moved to st.elements.lib.image_utils AND its signature changed:
+# the second arg is now a LayoutConfig object instead of an int width.
+import streamlit.elements.image as _st_image
+if not hasattr(_st_image, 'image_to_url'):
+    from streamlit.elements.lib.image_utils import image_to_url as _new_image_to_url
+    from streamlit.elements.lib.layout_utils import LayoutConfig as _LayoutConfig
+
+    def _compat_image_to_url(image, width, clamp, channels, output_format, image_id):
+        layout_config = _LayoutConfig(width=width)
+        return _new_image_to_url(image, layout_config, clamp, channels, output_format, image_id)
+
+    _st_image.image_to_url = _compat_image_to_url
+
+from streamlit_drawable_canvas import st_canvas  # type: ignore
 
 # =========================================================
 # -------------------- CONFIGURATION ----------------------
@@ -169,10 +183,6 @@ subject_id_list = [s['id'] for s in subjects]
 # -------------------- SESSION STATE ----------------------
 # =========================================================
 
-if "scale" not in st.session_state:
-    st.session_state.scale = "log"
-if "runningdiff" not in st.session_state:
-    st.session_state.runningdiff = "off"
 if "username" not in st.session_state:
     st.session_state["username"] = "guest"
 if "subject_ids" not in st.session_state:
@@ -225,11 +235,9 @@ with st.sidebar:
     left_side, right_side = st.columns([1,1])
 
     with left_side:
-        rundiff = st.radio("Running difference", ["off", "on"])
-        st.session_state.runningdiff = rundiff
+        st.radio("Running difference", ["off", "on"], key="runningdiff")
     with right_side:
-        scale = st.radio("Scale", ["log", "linear"])
-        st.session_state.scale = scale
+        st.radio("Scale", ["log", "linear"], key="scale")
 
 
 # =========================================================
@@ -237,21 +245,24 @@ with st.sidebar:
 # =========================================================
 
 # Data can be intensity of running difference
-if st.session_state.runningdiff == "off":
+# Running difference is always displayed in linear scale
+rundiff_on = st.session_state.runningdiff == "on"
+if not rundiff_on:
     z = time_dist
     cmap = cmap_aia
 else:
     z = run_diff_td
     cmap = cmap_grey
-    st.session_state.scale = "linear"
 
 # Convert datetime → numeric (seconds since start)
 x_seconds = np.array([(xx - time[0]).total_seconds() for xx in time])
 y = distance
 
 # Choose data depending on scale (linear or log10)
+# Running difference forces linear scale regardless of radio selection
+effective_scale = "linear" if rundiff_on else st.session_state.scale
 z_safe = np.where(z > 0, z, np.nan)
-if st.session_state.scale == "log":
+if effective_scale == "log":
     z_display = np.log10(z_safe)
 else:
     z_display = z
