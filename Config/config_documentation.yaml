@@ -1,5 +1,5 @@
 documentation_media:
-    url: "Documentation\\"
+    url: "Documentation/"
     media_files:
         example_01:
             filename: "Example_01.PNG"
