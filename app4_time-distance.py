@@ -1,28 +1,43 @@
 import numpy as np  # type: ignore
 import streamlit as st  # type: ignore
 import pandas as pd  # type: ignore
-from streamlit_drawable_canvas import st_canvas  # type: ignore
 from PIL import Image  # type: ignore
 import datetime
-# import sunpy.visualization.colormaps as cm  # type: ignore
 import matplotlib.pyplot as plt  # type: ignore
 from urllib.request import urlopen, Request
+import urllib.parse
+import requests as http_requests
 import json
-# import re
+import re
 import yaml  # type: ignore
 from pathlib import Path
+# Patch streamlit-drawable-canvas for Streamlit 1.56+ compatibility
+# The package calls st.elements.image.image_to_url(image, width, clamp, channels, format, id)
+# but this function moved to st.elements.lib.image_utils AND its signature changed:
+# the second arg is now a LayoutConfig object instead of an int width.
+import streamlit.elements.image as _st_image
+if not hasattr(_st_image, 'image_to_url'):
+    from streamlit.elements.lib.image_utils import image_to_url as _new_image_to_url
+    from streamlit.elements.lib.layout_utils import LayoutConfig as _LayoutConfig
+
+    def _compat_image_to_url(image, width, clamp, channels, output_format, image_id):
+        layout_config = _LayoutConfig(width=width)
+        return _new_image_to_url(image, layout_config, clamp, channels, output_format, image_id)
+
+    _st_image.image_to_url = _compat_image_to_url
+
+from streamlit_drawable_canvas import st_canvas  # type: ignore
 
 # =========================================================
 # -------------------- CONFIGURATION ----------------------
 # =========================================================
 
-with open('Config\\config_project.yaml', 'r') as file:
+with Path('Config/config_project.yaml').open('r') as file:
     config = yaml.safe_load(file)
 
-with open('Config\\config_documentation.yaml', 'r') as file:
+with Path('Config/config_documentation.yaml').open('r') as file:
     documentation = yaml.safe_load(file)
 
-# cmap_aia = plt.get_cmap("sdoaia304")  # type: ignore
 cmap_aia = plt.get_cmap("Greys")  # type: ignore
 cmap_grey = plt.get_cmap("Greys")  # type: ignore
 st.set_page_config(layout="wide")
@@ -158,6 +173,43 @@ def next_jet(subject_index, subject_ids):
     st.rerun()
 
 
+# --------- ZOONIVERSE OAUTH FUNCTIONS --------------------
+
+PANOPTES_URL = "https://panoptes.zooniverse.org"
+PANOPTES_SCOPE = "user project classification subject public"
+
+def get_oauth_login_url():
+    oauth = st.secrets["zooniverse_oauth"]
+    params = urllib.parse.urlencode({
+        "response_type": "code",
+        "client_id": oauth["client_id"],
+        "redirect_uri": oauth["redirect_uri"],
+        "scope": PANOPTES_SCOPE,
+    })
+    return f"{PANOPTES_URL}/oauth/authorize?{params}"
+
+def exchange_code_for_token(code):
+    oauth = st.secrets["zooniverse_oauth"]
+    response = http_requests.post(f"{PANOPTES_URL}/oauth/token", data={
+        "grant_type": "authorization_code",
+        "client_id": oauth["client_id"],
+        "client_secret": oauth["client_secret"],
+        "redirect_uri": oauth["redirect_uri"],
+        "code": code,
+    })
+    response.raise_for_status()
+    return response.json()
+
+def get_authenticated_user(token):
+    response = http_requests.get(f"{PANOPTES_URL}/api/me", headers={
+        "Accept": "application/vnd.api+json; version=1",
+        "Authorization": f"Bearer {token}",
+    })
+    response.raise_for_status()
+    users = response.json().get("users", [])
+    return users[0] if users else None
+
+
 # =========================================================
 # -------------------- GET SUBJECTS -----------------------
 # =========================================================
@@ -170,30 +222,47 @@ subject_id_list = [s['id'] for s in subjects]
 # -------------------- SESSION STATE ----------------------
 # =========================================================
 
-if "scale" not in st.session_state:
-    st.session_state.scale = "log"
-if "runningdiff" not in st.session_state:
-    st.session_state.runningdiff = "off"
 if "username" not in st.session_state:
     st.session_state["username"] = "guest"
+if "oauth_token" not in st.session_state:
+    st.session_state["oauth_token"] = None
 if "subject_ids" not in st.session_state:
-    st.session_state["subject_ids"] = subject_id_list  # your list
+    st.session_state["subject_ids"] = subject_id_list
 if "subject_index" not in st.session_state:
     st.session_state["subject_index"] = 0
 
+
+# =========================================================
+# -------------------- LOGIN (OAuth) ----------------------
+# =========================================================
+
+# Handle OAuth callback: Panoptes redirects back with ?code=
+query_params = st.query_params
+if "code" in query_params and st.session_state["oauth_token"] is None:
+    code = query_params["code"]
+    try:
+        token_data = exchange_code_for_token(code)
+        st.session_state["oauth_token"] = token_data["access_token"]
+        user = get_authenticated_user(token_data["access_token"])
+        if user:
+            st.session_state["username"] = user.get("login", user.get("display_name", "user"))
+        # Clear the code from the URL to prevent re-exchange on rerun
+        st.query_params.clear()
+        st.rerun()
+    except Exception as e:
+        st.error(f"Login failed: {e}")
+        st.query_params.clear()
+
 st.write(f"Logged in as: {st.session_state['username']}")
 
-
-# =========================================================
-# -------------------- LOGIN ------------------------------
-# =========================================================
-
 if st.session_state["username"] == "guest":
-    if st.button("Zooniverse login"):
-        pass
+    login_url = get_oauth_login_url()
+    st.link_button("Log in with Zooniverse", login_url)
 else:
     if st.button("Log out"):
         st.session_state["username"] = "guest"
+        st.session_state["oauth_token"] = None
+        st.rerun()
 
 
 # =========================================================
@@ -212,7 +281,7 @@ time, distance, time_dist, run_diff_td = get_td_data_from_metadata(metadata)
 # read jet id to access local context media (not part of the subject)
 current_jet_id = metadata['jet_id']
 jet_year = current_jet_id[4:8]
-context_path = Path(config['project_urls']['context_media']+jet_year+'\\'+current_jet_id+'_304\\'+current_jet_id+'_304.mp4')
+context_path = Path(config['project_urls']['context_media']) / jet_year / f"{current_jet_id}_304" / f"{current_jet_id}_304.mp4"
 
 # =========================================================
 # -------------------- UI CONTROLS ------------------------
@@ -222,15 +291,13 @@ with st.sidebar:
     st.title('Image display controls')
     with st.expander("ℹ️ About the controls"):
         st.write(documentation['sidebar_text']['control_text'])
-    
+
     left_side, right_side = st.columns([1,1])
 
     with left_side:
-        rundiff = st.radio("Running difference", ["off", "on"])
-        st.session_state.runningdiff = rundiff
+        st.radio("Running difference", ["off", "on"], key="runningdiff")
     with right_side:
-        scale = st.radio("Scale", ["log", "linear"])
-        st.session_state.scale = scale
+        st.radio("Scale", ["log", "linear"], key="scale")
 
 
 # =========================================================
@@ -238,21 +305,24 @@ with st.sidebar:
 # =========================================================
 
 # Data can be intensity of running difference
-if st.session_state.runningdiff == "off":
+# Running difference is always displayed in linear scale
+rundiff_on = st.session_state.runningdiff == "on"
+if not rundiff_on:
     z = time_dist
     cmap = cmap_aia
 else:
     z = run_diff_td
     cmap = cmap_grey
-    st.session_state.scale = "linear"
 
 # Convert datetime → numeric (seconds since start)
 x_seconds = np.array([(xx - time[0]).total_seconds() for xx in time])
 y = distance
 
 # Choose data depending on scale (linear or log10)
+# Running difference forces linear scale regardless of radio selection
+effective_scale = "linear" if rundiff_on else st.session_state.scale
 z_safe = np.where(z > 0, z, np.nan)
-if st.session_state.scale == "log":
+if effective_scale == "log":
     z_display = np.log10(z_safe)
 else:
     z_display = z
@@ -306,7 +376,7 @@ with main:
 with right:
     with st.container(border=True):
         st.write('#### More info about this jet')
-        st.video(str(context_path))
+        # st.video(str(context_path))
         st.write('Play the video to see the jet developing in the associated box.')
 
         with st.expander("ℹ️ How do we produce the time-distance plot?"):
@@ -345,7 +415,7 @@ with main:
     st.write(" ")
     with st.expander("ℹ️ Why are we doing this?"):
         st.write(documentation["main_text"]["why_are_we_doing_this"]["text1"])
-        
+
 
 # =========================================================
 # -------------------- COORDINATE MAPPING ------------------
@@ -367,7 +437,7 @@ def pixel_to_data(px, py, x_seconds, y, width, height):
 
 lines = []
 
-# NEED TO ALSO SAVE THE NUMERIC VALUE OF X FOR AGGREGATION PURPOSE... 
+# NEED TO ALSO SAVE THE NUMERIC VALUE OF X FOR AGGREGATION PURPOSE...
 # WE ALSO NEED TO STORE THE IMAGE WIDTH AND HEIGHT, AND MAYBE THE LIMITS OF X_SECONDS,
 # TO EASY CONVERSION OF THE AGGREGATED VALUE LATER
 if canvas.json_data is not None:
